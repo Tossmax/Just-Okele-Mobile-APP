@@ -47,6 +47,7 @@ export default function Login() {
         <Link href="/(auth)/register" style={styles.linkText}>
           New User? Register a new account
         </Link>
+        <Link href="/(dashboard)/home" style={styles.linkText}>Home</Link>
         </View>  
         </TouchableWithoutFeedback> 
     </SafeAreaView>
