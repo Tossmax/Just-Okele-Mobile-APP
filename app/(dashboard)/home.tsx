@@ -1,10 +1,15 @@
-import React from 'react'
-import { View } from 'react-native'
+import { Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function Home() {
+
   return (
-    <View>
-      Welcom to Just Okele
-    </View>
+    <SafeAreaView>
+      <View>
+        <Text>
+          Welcome to Just Okele
+        </Text>
+      </View>
+    </SafeAreaView>
   )
 }

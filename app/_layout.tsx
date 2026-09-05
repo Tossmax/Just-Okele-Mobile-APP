@@ -1,4 +1,4 @@
-import { UserProvider } from "@/contexts/UserContexts";
+import { UserProvider } from "@/contexts/UserContext";
 import { Stack } from "expo-router";
 
 export default function RootLayout() {
@@ -14,6 +14,7 @@ export default function RootLayout() {
             headerTransparent: true,
             headerTintColor: "#FFFFFF",}}/>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
     </Stack>
   </UserProvider>);
 }

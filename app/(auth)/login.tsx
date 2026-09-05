@@ -1,5 +1,5 @@
 import { View, Text, Pressable, StyleSheet, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native'
-import React from 'react'
+import { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Link, router } from 'expo-router'
 import ThemedTextInput from '@/components/ThemedTextInput'
@@ -7,16 +7,24 @@ import { useUser } from '@/hooks/useUser'
 
 export default function Login() {
 
-  const [email, setEmail] = React.useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null)
 
-  const [password, setPassword] = React.useState('');
 
 
-  const { user } = useUser();
+  const { login } = useUser();
 
-  const handleLogin = () => {
-   
-    console.log('current user:', user);
+  const handleLogin = async () => {
+    
+    setError(null)
+
+    try{
+      await login(email, password);
+    } catch (error) {
+      setError(error.message)
+    }
+    
     // Add your login
   }
 
@@ -44,10 +52,11 @@ export default function Login() {
         <Pressable onPress={handleLogin} style={{backgroundColor: '#AC4B04', padding: 20, borderRadius: 5, marginTop: 20, width: 350, marginBottom: 40}}>
           <Text style={styles.btn}>Login</Text>
         </Pressable>
+
+        {error && <Text style={{ color: 'red', width:350, alignSelf: 'center'}}>{error}</Text>}
         <Link href="/(auth)/register" style={styles.linkText}>
           New User? Register a new account
         </Link>
-        <Link href="/(dashboard)/home" style={styles.linkText}>Home</Link>
         </View>  
         </TouchableWithoutFeedback> 
     </SafeAreaView>

@@ -1,5 +1,5 @@
 import {useContext} from "react";
-import { UserContext } from "@/contexts/UserContexts";
+import { UserContext } from "@/contexts/UserContext";
 
 export function useUser() {
     const context = useContext(UserContext);
@@ -8,5 +8,5 @@ export function useUser() {
         throw new Error("useUser must be used within a UserProvider");
     }   
 
-    return context;
+    return context
 }
