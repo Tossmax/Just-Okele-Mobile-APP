@@ -1,24 +1,62 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
+  FlatList,
   Image,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { formatPrice, menuItems } from "@/features/menu/menuData";
+import CartIconButton from "@/components/CartIconButton";
+import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
+import {
+  defaultCartOptions,
+  formatPrice,
+  menuItems,
+} from "@/features/menu/menuData";
 
-const categories = ["Newest", "Jollof rice", "Amala & ewedu", "Swallow"];
+const horizontalPadding = 35;
+const categories = [
+  "Newest",
+  "Jollof rice",
+  "Amala&ewedu",
+  "Eba & Egusi",
+];
+const featuredMeals = [
+  { id: "eba", title: "Eba & Egusi" },
+  { id: "ofada", title: "Ofada Rice" },
+  { id: "amala", title: "Amala & Ewedu" },
+  { id: "jollof", title: "Party Jollof" },
+].flatMap((featured) => {
+  const meal = menuItems.find((item) => item.id === featured.id);
+  return meal ? [{ ...featured, meal }] : [];
+});
 
 export default function Home() {
+  const { width: screenWidth } = useWindowDimensions();
+  const bannerListRef = useRef<FlatList<(typeof featuredMeals)[number]>>(null);
+  const [activeBanner, setActiveBanner] = useState(0);
+  const [bannerHeights, setBannerHeights] = useState<Record<string, number>>(
+    {},
+  );
   const [search, setSearch] = useState("");
+  const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("Newest");
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const { addItem } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const activeBannerId = featuredMeals[activeBanner]?.id;
+  const bannerHeight = activeBannerId
+    ? (bannerHeights[activeBannerId] ?? 192)
+    : 192;
 
   const filteredItems = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -28,18 +66,47 @@ export default function Home() {
         selectedCategory === "Newest" || item.category === selectedCategory;
       const matchesSearch =
         normalizedSearch.length === 0 ||
-        `${item.name} ${item.description}`.toLowerCase().includes(normalizedSearch);
+        `${item.name} ${item.description}`
+          .toLowerCase()
+          .includes(normalizedSearch);
 
       return matchesCategory && matchesSearch;
     });
   }, [search, selectedCategory]);
 
-  const toggleFavorite = (itemId: string) => {
-    setFavorites((currentFavorites) =>
-      currentFavorites.includes(itemId)
-        ? currentFavorites.filter((id) => id !== itemId)
-        : [...currentFavorites, itemId],
+  const menuRows = useMemo(() => {
+    const rows: (typeof menuItems)[] = [];
+
+    for (let index = 0; index < filteredItems.length; index += 2) {
+      rows.push(filteredItems.slice(index, index + 2));
+    }
+
+    return rows;
+  }, [filteredItems]);
+
+  const handleBannerScroll = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const index = Math.round(
+      event.nativeEvent.contentOffset.x / screenWidth,
     );
+    setActiveBanner(Math.min(index, featuredMeals.length - 1));
+  };
+
+  const measureBanner = (itemId: string, height: number) => {
+    const measuredHeight = Math.ceil(height);
+    setBannerHeights((currentHeights) =>
+      currentHeights[itemId] === measuredHeight
+        ? currentHeights
+        : { ...currentHeights, [itemId]: measuredHeight },
+    );
+  };
+
+  const openMeal = (itemId: string) => {
+    router.push({
+      pathname: "/submenu",
+      params: { id: itemId },
+    });
   };
 
   return (
@@ -50,78 +117,109 @@ export default function Home() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <View style={styles.headerSpacer} />
-          <Text style={styles.headerTitle}>Menu</Text>
-          <Pressable
-            accessibilityLabel="Open orders"
-            onPress={() => router.navigate("/(dashboard)/order")}
-            style={styles.cartButton}
-          >
-            <Ionicons name="cart-outline" size={27} color="#555" />
-          </Pressable>
+          <Text style={styles.greeting}>Hi, Tossmax</Text>
+          <CartIconButton />
         </View>
 
-        <View style={styles.searchBox}>
-          <TextInput
-            accessibilityLabel="Search menu"
-            placeholder="Search Menu"
-            placeholderTextColor="#666"
-            value={search}
-            onChangeText={setSearch}
-            style={styles.searchInput}
-            returnKeyType="search"
-          />
-          <Ionicons name="search-outline" size={24} color="#AC4B04" />
-        </View>
-
-        <View style={styles.featuredCard}>
+        <View style={styles.sectionHeading}>
+          <Text style={styles.sectionTitle}>Popular Meals</Text>
           <Pressable
-            accessibilityLabel="View Ofada Rice details"
-            onPress={() =>
-              router.push({
-                pathname: "../submenu",
-                params: { id: "ofada" },
-              })
-            }
-            style={styles.featuredContent}
-          >
-            <View style={styles.featuredCopy}>
-              <Text style={styles.featuredTitle}>Ofada Rice</Text>
-              <Text style={styles.featuredDescription}>
-                Free when ordering{"\n"}a business lunch
-              </Text>
-              <View style={styles.featuredPrice}>
-                <Text style={styles.featuredPriceText}>
-                  {formatPrice(1600)}
-                </Text>
-              </View>
-              <View style={styles.featuredPagination}>
-                {[0, 1, 2, 3, 4].map((dot) => (
-                  <View key={dot} style={styles.paginationDot} />
-                ))}
-              </View>
-            </View>
-            <Image
-              source={menuItems.find((item) => item.id === "ofada")!.image}
-              style={styles.featuredImage}
-            />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="Add Ofada Rice to favorites"
-            onPress={() => toggleFavorite("featured-ofada")}
-            style={styles.featuredFavorite}
+            accessibilityLabel={searchVisible ? "Close search" : "Search menu"}
+            onPress={() => {
+              setSearchVisible((visible) => !visible);
+              setSearch("");
+            }}
+            style={styles.searchToggle}
           >
             <Ionicons
-              name={
-                favorites.includes("featured-ofada")
-                  ? "heart"
-                  : "heart-outline"
-              }
-              size={25}
+              name={searchVisible ? "close" : "search"}
+              size={19}
               color="#AC4B04"
             />
           </Pressable>
         </View>
+
+        {searchVisible && (
+          <View style={styles.searchBox}>
+            <TextInput
+              autoFocus
+              accessibilityLabel="Search meals"
+              placeholder="Search Menu"
+              placeholderTextColor="#777777"
+              value={search}
+              onChangeText={setSearch}
+              style={styles.searchInput}
+              returnKeyType="search"
+            />
+            <Ionicons name="search-outline" size={21} color="#AC4B04" />
+          </View>
+        )}
+
+        <FlatList
+          ref={bannerListRef}
+          data={featuredMeals}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          onMomentumScrollEnd={handleBannerScroll}
+          getItemLayout={(_, index) => ({
+            length: screenWidth,
+            offset: screenWidth * index,
+            index,
+          })}
+          style={[
+            styles.bannerList,
+            { width: screenWidth, height: bannerHeight },
+          ]}
+          renderItem={({ item }) => (
+            <View
+              style={{
+                width: screenWidth,
+                paddingHorizontal: horizontalPadding,
+              }}
+            >
+              <View
+                onLayout={({ nativeEvent }) =>
+                  measureBanner(item.id, nativeEvent.layout.height)
+                }
+                style={styles.bannerCard}
+              >
+                <View style={styles.bannerCopy}>
+                  <Text style={styles.bannerTitle}>{item.title}</Text>
+                  <Text style={styles.bannerDescription}>
+                    Free when ordering{"\n"}a business lunch
+                  </Text>
+                  <Pressable
+                    accessibilityLabel={`Order ${item.meal.name}`}
+                    onPress={() => openMeal(item.meal.id)}
+                    style={styles.orderNowButton}
+                  >
+                    <Text style={styles.orderNowText}>Order Now</Text>
+                  </Pressable>
+                  <View style={styles.pagination}>
+                    {featuredMeals.map((meal, index) => (
+                      <View
+                        key={meal.id}
+                        style={[
+                          styles.paginationDash,
+                          activeBanner === index && styles.activeDash,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Pressable
+                  accessibilityLabel={`View ${item.meal.name}`}
+                  onPress={() => openMeal(item.meal.id)}
+                  style={styles.bannerImageFrame}
+                >
+                  <Image source={item.meal.image} style={styles.bannerImage} />
+                </Pressable>
+              </View>
+            </View>
+          )}
+        />
 
         <ScrollView
           horizontal
@@ -153,52 +251,97 @@ export default function Home() {
           })}
         </ScrollView>
 
-        {filteredItems.length > 0 ? (
-          <View style={styles.menuGrid}>
-            {filteredItems.map((item) => {
-              const isFavorite = favorites.includes(item.id);
+        {menuRows.length > 0 ? (
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.menuGridScroller}
+          >
+            <View style={styles.menuRows}>
+              {menuRows.map((row, rowIndex) => (
+                <View key={`row-${rowIndex}`} style={styles.menuRow}>
+                  {row.map((item) => {
+                    const itemIsFavorite = isFavorite(item.id);
 
-              return (
-                <View key={item.id} style={styles.menuCard}>
-                  <Pressable
-                    accessibilityLabel={`View ${item.name} details`}
-                    onPress={() =>
-                      router.push({
-                        pathname: "../submenu",
-                        params: { id: item.id },
-                      })
-                    }
-                  >
-                    <View style={styles.foodImageWrap}>
-                      <Image source={item.image} style={styles.foodImage} />
-                    </View>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemDescription}>
-                      {item.description}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`${
-                      isFavorite ? "Remove" : "Add"
-                    } ${item.name} ${isFavorite ? "from" : "to"} favorites`}
-                    onPress={() => toggleFavorite(item.id)}
-                    style={styles.favoriteButton}
-                  >
-                    <Ionicons
-                      name={isFavorite ? "heart" : "heart-outline"}
-                      size={25}
-                      color="#AC4B04"
-                    />
-                  </Pressable>
-                  <View style={styles.itemPrice}>
-                    <Text style={styles.itemPriceText}>
-                      {formatPrice(item.price)}
-                    </Text>
-                  </View>
+                    return (
+                      <View key={item.id} style={styles.menuCard}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`View ${item.name} details`}
+                          onPress={() => openMeal(item.id)}
+                          style={styles.mealDetails}
+                        >
+                          <View style={styles.foodImageWrap}>
+                            <Image
+                              source={item.image}
+                              style={styles.foodImage}
+                            />
+                          </View>
+                          <View style={styles.itemHeading}>
+                            <Text
+                              style={styles.itemName}
+                              numberOfLines={1}
+                            >
+                              {item.name}
+                            </Text>
+                            <View style={styles.rating}>
+                              <Ionicons
+                                name="star-outline"
+                                size={13}
+                                color="#AC4B04"
+                              />
+                              <Text style={styles.ratingText}>4.5</Text>
+                            </View>
+                          </View>
+                          <Text
+                            style={styles.itemDescription}
+                            numberOfLines={2}
+                          >
+                            {item.description}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`${
+                            itemIsFavorite ? "Remove" : "Add"
+                          } ${item.name} ${itemIsFavorite ? "from" : "to"} favorites`}
+                          onPress={() => toggleFavorite(item.id)}
+                          style={styles.favoriteButton}
+                        >
+                          <Ionicons
+                            name={itemIsFavorite ? "heart" : "heart-outline"}
+                            size={26}
+                            color="#AC4B04"
+                          />
+                        </Pressable>
+                        <Text style={styles.itemPrice}>
+                          {formatPrice(item.price)}
+                        </Text>
+                        <Pressable
+                          accessibilityLabel={`Add ${item.name} to cart`}
+                          onPress={() =>
+                            addItem(
+                              item,
+                              1,
+                              defaultCartOptions[item.id] ?? "Meal",
+                            )
+                          }
+                          style={styles.addToCartButton}
+                        >
+                          <Ionicons
+                            name="cart-outline"
+                            size={17}
+                            color="#FFFFFF"
+                          />
+                        </Pressable>
+                      </View>
+                    );
+                  })}
                 </View>
-              );
-            })}
-          </View>
+              ))}
+            </View>
+          </ScrollView>
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No meals found</Text>
@@ -218,35 +361,45 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingHorizontal: horizontalPadding,
+    paddingBottom: 28,
   },
   header: {
-    height: 56,
+    height: 45,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  headerSpacer: {
-    width: 40,
-  },
-  headerTitle: {
+  greeting: {
     color: "#222222",
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "600",
   },
-  cartButton: {
-    width: 40,
-    alignItems: "flex-end",
+  sectionHeading: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    color: "#222222",
+    fontSize: 19,
+  },
+  searchToggle: {
+    width: 25,
+    height: 25,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchBox: {
-    height: 43,
+    height: 42,
     borderWidth: 1,
     borderColor: "#AC4B04",
     borderRadius: 10,
-    paddingHorizontal: 13,
-    marginTop: 8,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    marginTop: -12,
+    marginBottom: 16,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -256,153 +409,190 @@ const styles = StyleSheet.create({
     color: "#222222",
     fontSize: 15,
   },
-  featuredCard: {
-    minHeight: 190,
+  bannerList: {
+    marginHorizontal: -horizontalPadding,
+    marginBottom: 35,
+  },
+  bannerCard: {
     borderRadius: 16,
     backgroundColor: "#EAEAEA",
-    overflow: "hidden",
+    overflow: "visible",
     flexDirection: "row",
-    marginBottom: 20,
   },
-  featuredCopy: {
+  bannerCopy: {
     flex: 1,
-    paddingLeft: 22,
+    paddingLeft: 27,
     paddingTop: 12,
-    paddingBottom: 14,
-    justifyContent: "space-between",
+    paddingBottom: 5,
+    justifyContent: "flex-start",
     zIndex: 1,
   },
-  featuredContent: {
-    flex: 1,
-    flexDirection: "row",
-  },
-  featuredTitle: {
-    color: "#AC4B04",
-    fontSize: 20,
+  bannerTitle: {
+    color: "#222222",
+    fontSize: 19,
+    lineHeight: 23,
     fontWeight: "700",
+    marginBottom: 4,
   },
-  featuredDescription: {
+  bannerDescription: {
     color: "#666666",
     fontSize: 15,
-    lineHeight: 23,
+    lineHeight: 22,
+    marginBottom: 14,
   },
-  featuredPrice: {
-    alignSelf: "flex-start",
+  orderNowButton: {
+    width: 129,
+    height: 48,
     backgroundColor: "#AC4B04",
-    borderRadius: 9,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  featuredPriceText: {
+  orderNowText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 17,
+    lineHeight: 21,
   },
-  featuredPagination: {
+  pagination: {
     flexDirection: "row",
     gap: 7,
-    marginTop: 3,
+    alignItems: "center",
+    height: 20,
+    marginTop: 14,
+    marginBottom: 8,
   },
-  paginationDot: {
+  paginationDash: {
     width: 14,
-    height: 3,
+    height: 4,
     borderRadius: 2,
-    backgroundColor: "#222222",
+    backgroundColor: "#555555",
   },
-  featuredImage: {
-    width: "49%",
+  activeDash: {
+    backgroundColor: "#171717",
+  },
+  bannerImageFrame: {
+    width: 180,
     height: 180,
     alignSelf: "center",
-    borderRadius: 100,
-    borderWidth: 3,
+    marginRight: -19,
+    borderRadius: 90,
+    borderWidth: 5,
     borderColor: "#FFFFFF",
-    marginRight: -8,
+    overflow: "hidden",
   },
-  featuredFavorite: {
-    position: "absolute",
-    right: 9,
-    top: 10,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 4,
+  bannerImage: {
+    width: "100%",
+    height: "100%",
   },
   categories: {
-    gap: 10,
-    paddingBottom: 20,
+    gap: 9,
+    paddingBottom: 16,
   },
   categoryButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#888888",
+    borderRadius: 15,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    backgroundColor: "#FFFFFF",
   },
   selectedCategoryButton: {
     backgroundColor: "#AC4B04",
+    borderColor: "#AC4B04",
   },
   categoryText: {
-    color: "#AC4B04",
-    fontSize: 16,
+    color: "#222222",
+    fontSize: 15,
   },
   selectedCategoryText: {
     color: "#FFFFFF",
   },
-  menuGrid: {
+  menuGridScroller: {
+    paddingRight: horizontalPadding,
+  },
+  menuRows: {
+    gap: 30,
+  },
+  menuRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 16,
+    gap: 36,
   },
   menuCard: {
-    width: "48%",
-    minHeight: 208,
-    backgroundColor: "#EAEAEA",
+    width: 216,
+    height: 262,
+    paddingHorizontal: 12,
+    paddingTop: 10,
     borderRadius: 15,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 40,
-    marginBottom: 14,
+    backgroundColor: "#EAEAEA",
+  },
+  mealDetails: {
+    flex: 1,
   },
   foodImageWrap: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
+    width: 98,
+    height: 98,
+    borderRadius: 49,
     overflow: "hidden",
     alignSelf: "center",
     borderWidth: 2,
     borderColor: "#FFFFFF",
-    marginBottom: 9,
+    marginBottom: 10,
   },
   foodImage: {
     width: "100%",
     height: "100%",
   },
-  favoriteButton: {
-    position: "absolute",
-    right: 9,
-    top: 10,
-    padding: 2,
+  itemHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 4,
   },
   itemName: {
+    flex: 1,
     color: "#AC4B04",
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
-    marginBottom: 8,
+  },
+  rating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  ratingText: {
+    color: "#222222",
+    fontSize: 12,
   },
   itemDescription: {
     color: "#666666",
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 17,
+    marginTop: 5,
+  },
+  favoriteButton: {
+    position: "absolute",
+    right: 8,
+    top: 10,
+    padding: 2,
   },
   itemPrice: {
     position: "absolute",
-    bottom: -1,
-    alignSelf: "center",
-    backgroundColor: "#AC4B04",
-    borderRadius: 14,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    left: 12,
+    bottom: 17,
+    color: "#111111",
+    fontSize: 17,
+    fontWeight: "700",
   },
-  itemPriceText: {
-    color: "#FFFFFF",
-    fontSize: 15,
+  addToCartButton: {
+    position: "absolute",
+    right: 12,
+    bottom: 12,
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    backgroundColor: "#AC4B04",
   },
   emptyState: {
     paddingVertical: 40,

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice } from "@/features/menu/menuData";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -13,7 +14,7 @@ export default function Order() {
         <Text style={styles.title}>My Cart</Text>
       </View>
       {items.length > 0 ? (
-        <>
+        <View style={styles.orderContent}>
           <ScrollView contentContainerStyle={styles.list}>
             {items.map((cartItem) => (
               <View key={cartItem.key} style={styles.cartItem}>
@@ -42,11 +43,20 @@ export default function Order() {
               </View>
             ))}
           </ScrollView>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+          <View style={styles.footer}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/delivery-address")}
+              style={styles.checkoutButton}
+            >
+              <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
+            </Pressable>
           </View>
-        </>
+        </View>
       ) : (
         <View style={styles.emptyState}>
           <Ionicons name="cart-outline" size={42} color="#AC4B04" />
@@ -75,7 +85,11 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: "600",
   },
+  orderContent: {
+    flex: 1,
+  },
   list: {
+    flexGrow: 1,
     padding: 18,
     gap: 14,
   },
@@ -118,9 +132,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingVertical: 16,
+  },
+  footer: {
+    paddingBottom: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#DDDDDD",
+  },
+  checkoutButton: {
+    height: 50,
+    marginHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 13,
+    backgroundColor: "#AC4B04",
+  },
+  checkoutButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   totalLabel: {
     color: "#222222",

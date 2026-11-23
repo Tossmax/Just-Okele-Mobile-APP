@@ -11,7 +11,8 @@ export default function Home() {
             backgroundColor: '#fff',
             paddingTop: 8,
             paddingBottom: 8,
-            height: 76}, 
+            height: 76},
+            tabBarLabelStyle: { fontSize: 11 },
             tabBarActiveTintColor: '#AC4B04',
             tabBarInactiveTintColor: '#000000'
           }}>
@@ -21,14 +22,8 @@ export default function Home() {
               color={focused ? "#AC4B04" : "#000000"} 
               />
         ) }} />
-        <Tabs.Screen name="favorite" options={{ title: 'Favorite', tabBarIcon: ({focused}) => (
+        <Tabs.Screen name="favorite" options={{ title: 'Favorites', tabBarIcon: ({focused}) => (
               <Ionicons name={focused ? "heart" : "heart-outline"}
-              size={24}
-              color={focused ? "#AC4B04" : "#000000"} 
-              />
-        ) }} />
-        <Tabs.Screen name="order" options={{ title: 'Order', tabBarIcon: ({focused}) => (
-              <Ionicons name={focused ? "cart" : "cart-outline"}
               size={24}
               color={focused ? "#AC4B04" : "#000000"} 
               />
@@ -39,10 +34,18 @@ export default function Home() {
               color={focused ? "#AC4B04" : "#000000"} 
               />
         ) }} />
-        <Tabs.Screen
-          name="submenu"
-          options={{ href: null, tabBarStyle: { display: 'none' } }}
-        />
+        <Tabs.Screen name="order" options={{ title: 'Orders', tabBarIcon: ({focused}) => (
+              <Ionicons name={focused ? "cart" : "cart-outline"}
+              size={24}
+              color={focused ? "#AC4B04" : "#000000"} 
+              />
+        ) }} />
+        <Tabs.Screen name="track-order" options={{ title: 'Track Order', tabBarIcon: ({focused}) => (
+              <Ionicons name={focused ? "location" : "location-outline"}
+              size={24}
+              color={focused ? "#AC4B04" : "#000000"} 
+              />
+        ) }} />
       </Tabs>
     </UserOnly>
   )

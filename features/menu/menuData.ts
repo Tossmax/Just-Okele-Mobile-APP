@@ -14,16 +14,16 @@ export const menuItems: MenuItem[] = [
     id: "amala",
     name: "Amala",
     description: "Amala and Ewedu Soup with meats",
-    price: 1500,
-    category: "Amala & ewedu",
+    price: 3500,
+    category: "Amala&ewedu",
     image: require("../../assets/images/onb4.jpg"),
   },
   {
     id: "eba",
     name: "Eba",
-    description: "Eba with Egusi soup and assorted meat",
-    price: 1500,
-    category: "Swallow",
+    description: "Eba with Egusi Soup and assorted meat",
+    price: 2800,
+    category: "Eba & Egusi",
     image: require("../../assets/images/onb3.jpg"),
   },
   {
@@ -43,6 +43,13 @@ export const menuItems: MenuItem[] = [
     image: require("../../assets/images/onb4.jpg"),
   },
 ];
+
+export const defaultCartOptions: Record<string, string> = {
+  amala: "Gbegiri",
+  eba: "Egusi",
+  ofada: "Fish",
+  jollof: "Chicken",
+};
 
 export function formatPrice(price: number) {
   return `₦${price.toLocaleString("en-NG", {

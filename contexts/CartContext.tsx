@@ -18,6 +18,12 @@ type CartContextValue = {
   items: CartItem[];
   total: number;
   addItem: (menuItem: MenuItem, quantity: number, soup: string) => void;
+  setItemQuantity: (
+    menuItem: MenuItem,
+    quantity: number,
+    soup: string,
+  ) => void;
+  getItemQuantity: (menuItemId: string, soup: string) => number;
   removeItem: (key: string) => void;
 };
 
@@ -44,6 +50,33 @@ export function CartProvider({ children }: PropsWithChildren) {
     });
   };
 
+  const setItemQuantity = (
+    menuItem: MenuItem,
+    quantity: number,
+    soup: string,
+  ) => {
+    const key = `${menuItem.id}:${soup}`;
+
+    setItems((currentItems) => {
+      const existingItem = currentItems.some((item) => item.key === key);
+
+      if (quantity <= 0) {
+        return currentItems.filter((item) => item.key !== key);
+      }
+
+      if (existingItem) {
+        return currentItems.map((item) =>
+          item.key === key ? { ...item, quantity } : item,
+        );
+      }
+
+      return [...currentItems, { key, menuItem, quantity, soup }];
+    });
+  };
+
+  const getItemQuantity = (menuItemId: string, soup: string) =>
+    items.find((item) => item.key === `${menuItemId}:${soup}`)?.quantity ?? 0;
+
   const removeItem = (key: string) => {
     setItems((currentItems) => currentItems.filter((item) => item.key !== key));
   };
@@ -58,7 +91,16 @@ export function CartProvider({ children }: PropsWithChildren) {
   );
 
   return (
-    <CartContext.Provider value={{ items, total, addItem, removeItem }}>
+    <CartContext.Provider
+      value={{
+        items,
+        total,
+        addItem,
+        setItemQuantity,
+        getItemQuantity,
+        removeItem,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

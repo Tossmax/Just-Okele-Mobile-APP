@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,17 +12,50 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import CartIconButton from "@/components/CartIconButton";
+import UserOnly from "@/components/auth/UserOnly";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, menuItems } from "@/features/menu/menuData";
 
 const soupOptions = ["Fish", "Gbegiri", "Egusi"];
+const defaultSoupByMeal: Record<string, string> = {
+  amala: "Gbegiri",
+  eba: "Egusi",
+  ofada: "Fish",
+  jollof: "Chicken",
+};
 
-export default function Submenu() {
+export default function SubmenuRoute() {
+  return (
+    <UserOnly>
+      <SubmenuScreen />
+    </UserOnly>
+  );
+}
+
+function SubmenuScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const item = menuItems.find((menuItem) => menuItem.id === id);
-  const [quantity, setQuantity] = useState(1);
-  const [selectedSoup, setSelectedSoup] = useState(soupOptions[0]);
-  const { addItem } = useCart();
+  const { setItemQuantity, getItemQuantity } = useCart();
+  const defaultSoup = item
+    ? (defaultSoupByMeal[item.id] ?? soupOptions[0])
+    : soupOptions[0];
+  const availableSoupOptions =
+    defaultSoup === "Chicken" ? ["Chicken", ...soupOptions] : soupOptions;
+  const [quantity, setQuantity] = useState(() =>
+    item ? getItemQuantity(item.id, defaultSoup) || 1 : 1,
+  );
+  const [selectedSoup, setSelectedSoup] = useState(defaultSoup);
+  const [reviewsVisible, setReviewsVisible] = useState(false);
+
+  const updateQuantity = (nextQuantity: number) => {
+    const updatedQuantity = Math.max(1, nextQuantity);
+    setQuantity(updatedQuantity);
+
+    if (item) {
+      setItemQuantity(item, updatedQuantity, selectedSoup);
+    }
+  };
 
   if (!item) {
     return (
@@ -38,7 +72,7 @@ export default function Submenu() {
   }
 
   const handleAddToCart = () => {
-    addItem(item, quantity, selectedSoup);
+    setItemQuantity(item, quantity, selectedSoup);
     Alert.alert(
       "Added to cart",
       `${quantity} × ${item.name} with ${selectedSoup} added.`,
@@ -63,13 +97,10 @@ export default function Submenu() {
           <Ionicons name="chevron-back" size={23} color="#AC4B04" />
           <Text style={styles.backText}>Back</Text>
         </Pressable>
-        <Pressable
-          accessibilityLabel="Open cart"
-          onPress={() => router.navigate("/(dashboard)/order")}
-          style={styles.cartButton}
-        >
-          <Ionicons name="cart-outline" size={26} color="#AC4B04" />
-        </Pressable>
+        <Text pointerEvents="none" style={styles.headerTitle}>
+          Details
+        </Text>
+        <CartIconButton color="#AC4B04" />
       </View>
 
       <ScrollView
@@ -82,7 +113,7 @@ export default function Submenu() {
           <Pressable
             accessibilityLabel="Decrease quantity"
             disabled={quantity <= 1}
-            onPress={() => setQuantity((current) => Math.max(1, current - 1))}
+            onPress={() => updateQuantity(quantity - 1)}
             style={styles.quantityButton}
           >
             <Text style={styles.quantityButtonText}>−</Text>
@@ -90,7 +121,7 @@ export default function Submenu() {
           <Text style={styles.quantityText}>{quantity}</Text>
           <Pressable
             accessibilityLabel="Increase quantity"
-            onPress={() => setQuantity((current) => current + 1)}
+            onPress={() => updateQuantity(quantity + 1)}
             style={styles.quantityButton}
           >
             <Text style={styles.quantityButtonText}>+</Text>
@@ -105,7 +136,7 @@ export default function Submenu() {
 
         <Text style={styles.soupHeading}>Choose Favorite Soup</Text>
         <View style={styles.soupOptions}>
-          {soupOptions.map((soup) => {
+          {availableSoupOptions.map((soup) => {
             const isSelected = selectedSoup === soup;
 
             return (
@@ -113,7 +144,10 @@ export default function Submenu() {
                 key={soup}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: isSelected }}
-                onPress={() => setSelectedSoup(soup)}
+                onPress={() => {
+                  setSelectedSoup(soup);
+                  setQuantity(getItemQuantity(item.id, soup) || 1);
+                }}
                 style={[
                   styles.soupOption,
                   isSelected && styles.selectedSoupOption,
@@ -137,14 +171,19 @@ export default function Submenu() {
           })}
         </View>
 
-        <View style={styles.ratingRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Read customer reviews"
+          onPress={() => setReviewsVisible(true)}
+          style={styles.ratingRow}
+        >
           <View style={styles.rating}>
             <Ionicons name="star" size={17} color="#AC4B04" />
             <Text style={styles.ratingText}>4.5</Text>
             <Text style={styles.reviewCount}>(20)</Text>
           </View>
           <Ionicons name="chevron-forward" size={19} color="#E4D9D2" />
-        </View>
+        </Pressable>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -156,6 +195,59 @@ export default function Submenu() {
           <Text style={styles.addButtonText}>Add To Cart</Text>
         </Pressable>
       </View>
+
+      <Modal
+        visible={reviewsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReviewsVisible(false)}
+      >
+        <View style={styles.modalRoot}>
+          <Pressable
+            accessibilityLabel="Close reviews"
+            onPress={() => setReviewsVisible(false)}
+            style={[StyleSheet.absoluteFill, styles.modalBackdrop]}
+          />
+          <View style={styles.reviewSheet}>
+            <View style={styles.sheetHandle} />
+            <ScrollView
+              style={styles.reviewList}
+              contentContainerStyle={styles.reviewListContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {Array.from({ length: 9 }, (_, reviewIndex) => (
+                <View
+                  key={`${item.id}-review-${reviewIndex}`}
+                  style={styles.reviewItem}
+                >
+                  <View style={styles.reviewerHeader}>
+                    <Image
+                      source={item.image}
+                      style={styles.reviewAvatar}
+                    />
+                    <Text style={styles.reviewerName}>Ifeoluwa</Text>
+                    <Text style={styles.reviewDate}>on Aug, 2026</Text>
+                  </View>
+                  <View style={styles.reviewRating}>
+                    {[0, 1, 2, 3, 4].map((star) => (
+                      <Ionicons
+                        key={star}
+                        name="star"
+                        size={11}
+                        color="#AC4B04"
+                      />
+                    ))}
+                    <Text style={styles.reviewExcellent}>Excellent</Text>
+                  </View>
+                  <Text style={styles.reviewText} numberOfLines={1}>
+                    I enjoyed the {item.name} and the delivery is on time.
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -172,6 +264,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  headerTitle: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    color: "#AC4B04",
+    fontSize: 18,
+    fontWeight: "700",
+  },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -179,9 +280,6 @@ const styles = StyleSheet.create({
   backText: {
     color: "#AC4B04",
     fontSize: 16,
-  },
-  cartButton: {
-    padding: 5,
   },
   content: {
     paddingHorizontal: 22,
@@ -324,5 +422,79 @@ const styles = StyleSheet.create({
   unavailableText: {
     color: "#444444",
     fontSize: 16,
+  },
+  modalRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+  },
+  reviewSheet: {
+    height: "72%",
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 9,
+    paddingBottom: 20,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 136,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#E5E5E5",
+  },
+  reviewList: {
+    flex: 1,
+    marginTop: 56,
+  },
+  reviewListContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 18,
+  },
+  reviewItem: {
+    minHeight: 61,
+    justifyContent: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#DADADA",
+    paddingVertical: 5,
+  },
+  reviewerHeader: {
+    height: 17,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  reviewAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+  reviewerName: {
+    color: "#222222",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  reviewDate: {
+    color: "#777777",
+    fontSize: 10,
+    marginLeft: 3,
+  },
+  reviewRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 1,
+    marginTop: 1,
+  },
+  reviewExcellent: {
+    color: "#AC4B04",
+    fontSize: 10,
+    marginLeft: 4,
+  },
+  reviewText: {
+    color: "#222222",
+    fontSize: 11,
+    lineHeight: 14,
   },
 });
