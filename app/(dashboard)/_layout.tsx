@@ -9,8 +9,9 @@ export default function Home() {
     <UserOnly>
       <Tabs screenOptions={{ headerShown: false, tabBarStyle: {
             backgroundColor: '#fff',
-            paddingTop: 20,
-            height: 120}, 
+            paddingTop: 8,
+            paddingBottom: 8,
+            height: 76}, 
             tabBarActiveTintColor: '#AC4B04',
             tabBarInactiveTintColor: '#000000'
           }}>
@@ -18,30 +19,30 @@ export default function Home() {
               <Ionicons name={focused ? "home" : "home-outline"}
               size={24}
               color={focused ? "#AC4B04" : "#000000"} 
-              marginBottom={5}
               />
         ) }} />
         <Tabs.Screen name="favorite" options={{ title: 'Favorite', tabBarIcon: ({focused}) => (
               <Ionicons name={focused ? "heart" : "heart-outline"}
               size={24}
               color={focused ? "#AC4B04" : "#000000"} 
-              marginBottom={5}
               />
         ) }} />
         <Tabs.Screen name="order" options={{ title: 'Order', tabBarIcon: ({focused}) => (
               <Ionicons name={focused ? "cart" : "cart-outline"}
               size={24}
               color={focused ? "#AC4B04" : "#000000"} 
-              marginBottom={5}
               />
         ) }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({focused}) => (
               <Ionicons name={focused ? "person" : "person-outline"}
               size={24}
               color={focused ? "#AC4B04" : "#000000"} 
-              marginBottom={5}
               />
         ) }} />
+        <Tabs.Screen
+          name="submenu"
+          options={{ href: null, tabBarStyle: { display: 'none' } }}
+        />
       </Tabs>
     </UserOnly>
   )
